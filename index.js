@@ -220,6 +220,35 @@ app.put('/felhasznalonev', auth, async (req, res,) => {
         res.status(500).json({ message: "Szerver Hiba" })
     }
 })
+
+app.put('/jelszo', async (req, res) => {
+    const { jelenlegiJelszo, ujJelszo } = req.body;
+    if (!jelenlegiJelszo || !ujJelszo) {
+        return res.status(400).json({ message: "Hiányzó bemeneteli adatok" })
+    }
+    try {
+        // a felhasznalohoz tartozó hash-elt jeslzót megkeresem
+        const sql = 'SELECT * FROM  WHERE id = ?'
+        const [rows] = await db.query(sql, [req.user.id]);
+        user = rows[0];
+        const hashJelszo = user.jelszo;
+        //jelenlegi jelszot ossze vessuk az uj jelszoval
+        const ok = bcrypt.compare(jelenlegiJelszo, hashJelszo)
+        if (!ok) {
+            return res.status(401).json({ message: "A régi jelszó nem helyes" })
+        }
+        //Uj jelszo has-eslese
+        const hashUjJelszo = await bcrypt.hash(ujJelszo, 10)
+        const sql2 = 'UPDATE felhasznalok SET email = ? WHERE ID = ?'
+        await db.query(sql2, [hashUjJelszo, req.user.id]);
+        return res.status(200).json({ message: "Sikeresen módosult a jelszavad" })
+
+        // Uj jelszo beallitasa
+
+    } catch (error) {
+        res.status(500).json({ message: "szerverhiba" })
+    }
+})
 app.delete('/fiokom', auth, async (req, res) => {
     try {
         // törölni kell a felhasználót
